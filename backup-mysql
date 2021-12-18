@@ -1,28 +1,38 @@
 #!/bin/bash
-# TARGET: Backup-Ziel
-# IGNORE: Liste zu ignorierender Datenbanken (durch | getrennt)
-# CONF: MySQL Config-Datei, welche die Zugangsdaten enthaelt
-TARGET=/share/disk1/backup-mysql
-IGNORE="phpmyadmin|mysql|information_schema|performance_schema|test"
-CONF=/etc/mysql/leuwer.cnf
-/usr/bin/logger "$0 - Backup of MYSQL databases started."
-if [ ! -r $CONF ]; then /usr/bin/logger "$0 - cannot access $CONF."; exit 1; fi
-if [ ! -d $TARGET ] || [ ! -w $TARGET ]; then /usr/bin/logger "$0 - cannot write to backup dir."; exit 1; fi
 
-DBS="$(/usr/bin/mysql --defaults-extra-file=$CONF -Bse 'show databases' | /bin/grep -Ev $IGNORE)"
-NOW=$(date +"%Y-%m-%d")
-
-for DB in $DBS; do
-    /usr/bin/mysqldump --defaults-extra-file=$CONF --skip-extended-insert --skip-comments $DB > $TARGET/$DB.sql
-done
-
-if [ -x /usr/bin/git ] && [ -d ${TARGET}/.git/branches ]; then
-  cd $TARGET
-  /usr/bin/git add .
-  /usr/bin/git commit -m "$NOW"
-else
-  /usr/bin/logger "$0 - git not available or backup destination not under version control."
+if [ `whoami` != "root" ]; then
+    echo "$0 must be run as root"
+    exit 1
 fi
 
-/usr/bin/logger "$0 - Backup of MYSQL databases ($NOW) finished."
+# target: Backup-Ziel
+# ignore: Liste zu ignorierender Datenbanken (durch | getrennt)
+# conf: MySQL Config-Datei, welche die Zugangsdaten enthaelt
+target=/root/backup-mysql
+ignore="phpmyadmin|mysql|information_schema|performance_schema|test"
+conf=/etc/mysql/leuwer.cnf
+log=/usr/bin/logger
+
+$log "$0 - Dumping of MYSQL databases started."
+
+if [ ! -r $conf ]; then
+    $log "$0 - cannot access $conf."
+    exit 1
+fi
+
+if [ ! -d $target ] || [ ! -w $target ]; then
+    $log "$0 - cannot write to backup dir."
+    exit 1
+fi
+
+databases="$(/usr/bin/mysql --defaults-extra-file=$conf -Bse 'show databases' | /bin/grep -Ev $ignore)"
+now=$(date +"%Y-%m-%d")
+
+# Dump the data databases into SQL command files.
+for db in $databases; do
+    echo "   dumping $db ..."
+    /usr/bin/mysqldump --defaults-extra-file=$conf --skip-extended-insert --skip-comments $db > $target/$db.sql
+done
+
+$log "$0 - DUMPING of MYSQL databases  finished."
 exit 0
