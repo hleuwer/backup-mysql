@@ -1,0 +1,28 @@
+#!/bin/bash
+# TARGET: Backup-Ziel
+# IGNORE: Liste zu ignorierender Datenbanken (durch | getrennt)
+# CONF: MySQL Config-Datei, welche die Zugangsdaten enthaelt
+TARGET=/share/disk1/backup-mysql
+IGNORE="phpmyadmin|mysql|information_schema|performance_schema|test"
+CONF=/etc/mysql/leuwer.cnf
+/usr/bin/logger "$0 - Backup of MYSQL databases started."
+if [ ! -r $CONF ]; then /usr/bin/logger "$0 - cannot access $CONF."; exit 1; fi
+if [ ! -d $TARGET ] || [ ! -w $TARGET ]; then /usr/bin/logger "$0 - cannot write to backup dir."; exit 1; fi
+
+DBS="$(/usr/bin/mysql --defaults-extra-file=$CONF -Bse 'show databases' | /bin/grep -Ev $IGNORE)"
+NOW=$(date +"%Y-%m-%d")
+
+for DB in $DBS; do
+    /usr/bin/mysqldump --defaults-extra-file=$CONF --skip-extended-insert --skip-comments $DB > $TARGET/$DB.sql
+done
+
+if [ -x /usr/bin/git ] && [ -d ${TARGET}/.git/branches ]; then
+  cd $TARGET
+  /usr/bin/git add .
+  /usr/bin/git commit -m "$NOW"
+else
+  /usr/bin/logger "$0 - git not available or backup destination not under version control."
+fi
+
+/usr/bin/logger "$0 - Backup of MYSQL databases ($NOW) finished."
+exit 0
