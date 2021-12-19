@@ -39,4 +39,5 @@ for db in $databases; do
 done
 
 $log "$0 - DUMPING of MYSQL databases  finished."
+
 exit 0
