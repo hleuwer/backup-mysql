@@ -9,7 +9,8 @@ fi
 # ignore: Liste zu ignorierender Datenbanken (durch | getrennt)
 # conf: MySQL Config-Datei, welche die Zugangsdaten enthaelt
 target=/root/backup-mysql
-ignore="phpmyadmin|mysql|information_schema|performance_schema|test"
+#ignore="phpmyadmin|mysql|information_schema|performance_schema|test"
+ignore="information_schema|performance_schema|test"
 conf=/etc/mysql/leuwer.cnf
 log=/usr/bin/logger
 
@@ -27,6 +28,8 @@ fi
 
 databases="$(/usr/bin/mysql --defaults-extra-file=$conf -Bse 'show databases' | /bin/grep -Ev $ignore)"
 now=$(date +"%Y-%m-%d")
+# Create target directory
+mkdir -p $target
 
 # Dump the data databases into SQL command files.
 for db in $databases; do
